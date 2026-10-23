@@ -101,6 +101,13 @@
                 <p class="text-xs text-gray-400">{{ $gatePass->approved_at?->format('M d, Y h:i A') }}</p>
             </div>
             @endif
+            @if($gatePass->rejectedBy)
+            <div class="border-t pt-4 mb-4">
+                <p class="text-xs text-gray-500">Rejected By</p>
+                <p class="text-sm font-semibold">{{ $gatePass->rejectedBy->name }}</p>
+                <p class="text-xs text-gray-400">{{ $gatePass->rejected_at?->format('M d, Y h:i A') }}</p>
+            </div>
+            @endif
 
             {{-- Action Buttons --}}
             <div class="border-t pt-4 flex flex-wrap gap-3">

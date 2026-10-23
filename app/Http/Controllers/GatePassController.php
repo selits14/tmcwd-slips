@@ -7,6 +7,8 @@ use App\Models\Division;
 use App\Models\Vehicle;
 use App\Models\User;
 use App\Support\SlipNumber;
+use App\Support\SlipVisibility;
+use App\Support\SlipTransition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +17,7 @@ class GatePassController extends Controller
 {
 public function index(Request $request)
 {
-    $query = GatePass::with(['requestedBy', 'division', 'approvedBy'])
+    $query = SlipVisibility::query(GatePass::with(['requestedBy', 'division', 'approvedBy']), Auth::user(), 'gate')
         ->latest();
 
     if ($request->filled('search')) {
@@ -97,16 +99,15 @@ public function index(Request $request)
 
     public function show(GatePass $gatePass)
     {
-        $gatePass->load(['requestedBy', 'encodedBy', 'division', 'approvedBy', 'releasedBy']);
+        abort_unless(SlipVisibility::allows(Auth::user(), $gatePass, 'gate'), 404);
+        $gatePass->load(['requestedBy', 'encodedBy', 'division', 'approvedBy', 'rejectedBy', 'releasedBy']);
         return view('gate-passes.show', compact('gatePass'));
     }
 
     public function approve(GatePass $gatePass)
     {
         abort_unless($this->canApprove($gatePass), 403, 'Only the General Manager, division manager, or a super admin can approve vehicle passes.');
-        abort_unless($gatePass->status === 'pending', 409, 'Only pending vehicle passes can be approved.');
-
-        $gatePass->update([
+        SlipTransition::update($gatePass, 'pending', [
             'status'              => 'approved',
             'approved_by_user_id' => Auth::id(),
             'approved_at'         => now(),
@@ -118,13 +119,13 @@ public function index(Request $request)
     public function reject(Request $request, GatePass $gatePass)
     {
         abort_unless($this->canApprove($gatePass), 403, 'Only the General Manager, division manager, or a super admin can reject vehicle passes.');
-        abort_unless($gatePass->status === 'pending', 409, 'Only pending vehicle passes can be rejected.');
-
         $request->validate(['remarks' => 'nullable|string|max:2000']);
 
-        $gatePass->update([
-            'status'  => 'rejected',
-            'remarks' => $request->remarks,
+        SlipTransition::update($gatePass, 'pending', [
+            'status'              => 'rejected',
+            'remarks'             => $request->remarks,
+            'rejected_by_user_id' => Auth::id(),
+            'rejected_at'         => now(),
         ]);
 
         return back()->with('success', 'Vehicle Pass rejected.');
@@ -137,9 +138,7 @@ public function index(Request $request)
 
     public function release(GatePass $gatePass)
     {
-        abort_unless($gatePass->status === 'approved', 409, 'Only approved vehicle passes can be released.');
-
-        $gatePass->update([
+        SlipTransition::update($gatePass, 'approved', [
             'status'              => 'released',
             'released_by_user_id' => Auth::id(),
             'released_at'         => now(),
@@ -151,9 +150,7 @@ public function index(Request $request)
 
     public function returned(Request $request, GatePass $gatePass)
     {
-        abort_unless($gatePass->status === 'released', 409, 'Only released vehicle passes can be marked returned.');
-
-        $gatePass->update([
+        SlipTransition::update($gatePass, 'released', [
             'status'               => 'returned',
             'returned_at'          => now(),
             'time_of_arrival'      => now(),
@@ -165,22 +162,25 @@ public function index(Request $request)
 
 public function print(GatePass $gatePass)
 {
-    $gatePass->load(['requestedBy', 'encodedBy', 'division', 'approvedBy', 'releasedBy']);
+    abort_unless(SlipVisibility::allows(Auth::user(), $gatePass, 'gate'), 404);
+    $gatePass->load(['requestedBy', 'encodedBy', 'division', 'approvedBy', 'rejectedBy', 'releasedBy']);
     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('gate-passes.print', compact('gatePass'));
     $pdf->setPaper('a4', 'portrait'); // portrait for 2x2 layout
     return $pdf->stream('vehicle-pass-' . $gatePass->pass_number . '.pdf');
 }
 public function batchPrint(Request $request)
 {
-    $ids = $request->input('ids', []);
+    $ids = $request->validate(['ids' => 'required|array', 'ids.*' => 'integer|min:1'])['ids'];
 
     if (empty($ids)) {
         return back()->with('error', 'No vehicle passes selected.');
     }
 
-    $gatePasses = GatePass::with(['requestedBy', 'encodedBy', 'division', 'approvedBy'])
+    $ids = array_values(array_unique($ids));
+    $gatePasses = SlipVisibility::query(GatePass::with(['requestedBy', 'encodedBy', 'division', 'approvedBy']), Auth::user(), 'gate')
         ->whereIn('id', $ids)
         ->get();
+    abort_unless($gatePasses->count() === count($ids), 404);
 
     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
         'gate-passes.batch-print',

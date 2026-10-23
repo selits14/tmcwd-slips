@@ -11,6 +11,7 @@ class PassSlip extends Model
         'pass_type', 'purpose', 'destination',
         'time_out', 'expected_return', 'actual_return',
         'status', 'approved_by_user_id', 'approved_at',
+        'rejected_by_user_id', 'rejected_at',
         'verified_out_by', 'verified_in_by', 'remarks'
     ];
 
@@ -19,6 +20,7 @@ class PassSlip extends Model
         'expected_return'=> 'datetime',
         'actual_return'  => 'datetime',
         'approved_at'    => 'datetime',
+        'rejected_at'    => 'datetime',
     ];
 
     public function employee()
@@ -39,6 +41,11 @@ class PassSlip extends Model
     public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by_user_id');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by_user_id');
     }
 
     public function verifiedOutBy()

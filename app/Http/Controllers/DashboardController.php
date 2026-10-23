@@ -7,6 +7,7 @@ use App\Models\GatePass;
 use App\Models\PassSlip;
 use App\Models\User;
 use App\Models\Division;
+use App\Support\SlipVisibility;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -17,18 +18,18 @@ class DashboardController extends Controller
 
         // Pending counts
         $stats = [
-            'pass_slips_pending'  => PassSlip::where('status', 'pending')->count(),
-            'gate_passes_pending' => GatePass::where('status', 'pending')->count(),
-            'gas_slips_pending'   => GasSlip::where('status', 'pending')->count(),
-            'pass_slips_today'    => PassSlip::whereDate('created_at', today())->count(),
-            'gate_passes_today'   => GatePass::whereDate('created_at', today())->count(),
-            'gas_slips_today'     => GasSlip::whereDate('created_at', today())->count(),
-            'pass_slips_out'      => PassSlip::where('status', 'out')->count(),
-            'gate_passes_released'=> GatePass::where('status', 'released')->count(),
+            'pass_slips_pending'  => SlipVisibility::query(PassSlip::query(), $user, 'pass')->where('status', 'pending')->count(),
+            'gate_passes_pending' => SlipVisibility::query(GatePass::query(), $user, 'gate')->where('status', 'pending')->count(),
+            'gas_slips_pending'   => SlipVisibility::query(GasSlip::query(), $user, 'gas')->where('status', 'pending')->count(),
+            'pass_slips_today'    => SlipVisibility::query(PassSlip::query(), $user, 'pass')->whereDate('created_at', today())->count(),
+            'gate_passes_today'   => SlipVisibility::query(GatePass::query(), $user, 'gate')->whereDate('created_at', today())->count(),
+            'gas_slips_today'     => SlipVisibility::query(GasSlip::query(), $user, 'gas')->whereDate('created_at', today())->count(),
+            'pass_slips_out'      => SlipVisibility::query(PassSlip::query(), $user, 'pass')->where('status', 'out')->count(),
+            'gate_passes_released'=> SlipVisibility::query(GatePass::query(), $user, 'gate')->where('status', 'released')->count(),
         ];
 
         // Recent activity — last 10 across all modules
-        $recentPassSlips  = PassSlip::with(['employee', 'division'])
+        $recentPassSlips  = SlipVisibility::query(PassSlip::with(['employee', 'division']), $user, 'pass')
             ->latest()->take(5)->get()
             ->map(fn($s) => [
                 'type'       => 'Pass Slip',
@@ -40,7 +41,7 @@ class DashboardController extends Controller
                 'route'      => route('pass-slips.show', $s->id),
             ]);
 
-        $recentGatePasses = GatePass::with(['requestedBy', 'division'])
+        $recentGatePasses = SlipVisibility::query(GatePass::with(['requestedBy', 'division']), $user, 'gate')
             ->latest()->take(5)->get()
             ->map(fn($g) => [
                 'type'       => 'Vehicle Pass',
@@ -52,7 +53,7 @@ class DashboardController extends Controller
                 'route'      => route('gate-passes.show', $g->id),
             ]);
 
-        $recentGasSlips   = GasSlip::with(['driver', 'vehicle'])
+        $recentGasSlips   = SlipVisibility::query(GasSlip::with(['driver', 'vehicle']), $user, 'gas')
             ->latest()->take(5)->get()
             ->map(fn($g) => [
                 'type'       => 'Gas Slip',
@@ -73,15 +74,15 @@ class DashboardController extends Controller
             ->values();
 
         // Pending slips list for approvers
-        $pendingPassSlips  = PassSlip::with(['employee', 'division'])
+        $pendingPassSlips  = SlipVisibility::query(PassSlip::with(['employee', 'division']), $user, 'pass')
             ->where('status', 'pending')
             ->latest()->take(5)->get();
 
-        $pendingGatePasses = GatePass::with(['requestedBy', 'division'])
+        $pendingGatePasses = SlipVisibility::query(GatePass::with(['requestedBy', 'division']), $user, 'gate')
             ->where('status', 'pending')
             ->latest()->take(5)->get();
 
-        $pendingGasSlips   = GasSlip::with(['driver', 'vehicle'])
+        $pendingGasSlips   = SlipVisibility::query(GasSlip::with(['driver', 'vehicle']), $user, 'gas')
             ->where('status', 'pending')
             ->latest()->take(5)->get();
 

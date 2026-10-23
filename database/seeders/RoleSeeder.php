@@ -12,15 +12,8 @@ class RoleSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]
             ->forgetCachedPermissions();
 
-        // Delete old roles first
-        Role::query()->delete();
-
-        // Create new roles
-        Role::create(['name' => 'super_admin']);
-        Role::create(['name' => 'approver']);
-        Role::create(['name' => 'encoder']);
-        Role::create(['name' => 'driver']);
-        Role::create(['name' => 'guard']);
-        Role::create(['name' => 'viewer']);
+        foreach (['super_admin', 'approver', 'encoder', 'driver', 'guard', 'viewer'] as $name) {
+            Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+        }
     }
 }

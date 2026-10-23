@@ -6,6 +6,8 @@ use App\Models\GasSlip;
 use App\Models\Vehicle;
 use App\Models\User;
 use App\Support\SlipNumber;
+use App\Support\SlipVisibility;
+use App\Support\SlipTransition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +16,7 @@ class GasSlipController extends Controller
 {
 public function index(Request $request)
 {
-    $query = GasSlip::with(['vehicle', 'driver', 'requestedBy', 'division'])
+    $query = SlipVisibility::query(GasSlip::with(['vehicle', 'driver', 'requestedBy', 'division']), Auth::user(), 'gas')
         ->latest();
 
     if ($request->filled('search')) {
@@ -117,16 +119,15 @@ public function index(Request $request)
 
     public function show(GasSlip $gasSlip)
     {
-        $gasSlip->load(['vehicle', 'driver', 'requestedBy', 'encodedBy', 'division', 'approvedBy', 'releasedBy']);
+        abort_unless(SlipVisibility::allows(Auth::user(), $gasSlip, 'gas'), 404);
+        $gasSlip->load(['vehicle', 'driver', 'requestedBy', 'encodedBy', 'division', 'approvedBy', 'rejectedBy', 'releasedBy']);
         return view('gas-slips.show', compact('gasSlip'));
     }
 
     public function approve(GasSlip $gasSlip)
     {
         abort_unless(Auth::user()->canApproveSlipInDivision($gasSlip->division), 403, 'Only the General Manager, division manager, or a super admin can approve gas slips.');
-        abort_unless($gasSlip->status === 'pending', 409, 'Only pending gas slips can be approved.');
-
-        $gasSlip->update([
+        SlipTransition::update($gasSlip, 'pending', [
             'status'              => 'approved',
             'approved_by_user_id' => Auth::id(),
             'approved_at'         => now(),
@@ -138,13 +139,13 @@ public function index(Request $request)
     public function reject(Request $request, GasSlip $gasSlip)
     {
         abort_unless(Auth::user()->canApproveSlipInDivision($gasSlip->division), 403, 'Only the General Manager, division manager, or a super admin can reject gas slips.');
-        abort_unless($gasSlip->status === 'pending', 409, 'Only pending gas slips can be rejected.');
-
         $request->validate(['remarks' => 'nullable|string|max:2000']);
 
-        $gasSlip->update([
-            'status'  => 'rejected',
-            'remarks' => $request->remarks,
+        SlipTransition::update($gasSlip, 'pending', [
+            'status'              => 'rejected',
+            'remarks'             => $request->remarks,
+            'rejected_by_user_id' => Auth::id(),
+            'rejected_at'         => now(),
         ]);
 
         return back()->with('success', 'Gas Slip rejected.');
@@ -153,8 +154,7 @@ public function index(Request $request)
     // Driver fills Section B after the trip
     public function complete(Request $request, GasSlip $gasSlip)
     {
-        abort_unless($gasSlip->status === 'approved', 409, 'Only approved gas slips can be completed.');
-
+        abort_unless(Auth::user()->hasRole('super_admin') || $gasSlip->driver_user_id === Auth::id(), 403, 'Only the assigned driver can complete this gas slip.');
         $request->validate([
             'time_departure_office'      => 'required|date',
             'time_arrival_destination'   => 'required|date|after_or_equal:time_departure_office',
@@ -178,7 +178,7 @@ public function index(Request $request)
             ]);
         }
 
-        $gasSlip->update([
+        SlipTransition::update($gasSlip, 'approved', [
             'status'                     => 'released',
             'time_departure_office'      => $request->time_departure_office,
             'time_arrival_destination'   => $request->time_arrival_destination,
@@ -199,22 +199,25 @@ public function index(Request $request)
 
 public function print(GasSlip $gasSlip)
 {
-    $gasSlip->load(['vehicle', 'driver', 'requestedBy', 'encodedBy', 'division', 'approvedBy']);
+    abort_unless(SlipVisibility::allows(Auth::user(), $gasSlip, 'gas'), 404);
+    $gasSlip->load(['vehicle', 'driver', 'requestedBy', 'encodedBy', 'division', 'approvedBy', 'rejectedBy']);
     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('gas-slips.print', compact('gasSlip'));
     $pdf->setPaper('a4', 'landscape'); // wide short for 2 copies
     return $pdf->stream('gas-slip-' . $gasSlip->slip_number . '.pdf');
 }
 public function batchPrint(Request $request)
 {
-    $ids = $request->input('ids', []);
+    $ids = $request->validate(['ids' => 'required|array', 'ids.*' => 'integer|min:1'])['ids'];
 
     if (empty($ids)) {
         return back()->with('error', 'No gas slips selected.');
     }
 
-    $gasSlips = GasSlip::with(['vehicle', 'driver', 'requestedBy', 'encodedBy', 'approvedBy'])
+    $ids = array_values(array_unique($ids));
+    $gasSlips = SlipVisibility::query(GasSlip::with(['vehicle', 'driver', 'requestedBy', 'encodedBy', 'approvedBy']), Auth::user(), 'gas')
         ->whereIn('id', $ids)
         ->get();
+    abort_unless($gasSlips->count() === count($ids), 404);
 
     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
         'gas-slips.batch-print',

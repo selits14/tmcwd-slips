@@ -6,6 +6,8 @@ use App\Models\PassSlip;
 use App\Models\Division;
 use App\Models\User;
 use App\Support\SlipNumber;
+use App\Support\SlipVisibility;
+use App\Support\SlipTransition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +16,7 @@ class PassSlipController extends Controller
 {
 public function index(Request $request)
 {
-    $query = PassSlip::with(['employee', 'division', 'approvedBy'])
+    $query = SlipVisibility::query(PassSlip::with(['employee', 'division', 'approvedBy']), Auth::user(), 'pass')
         ->latest();
 
     if ($request->filled('search')) {
@@ -89,16 +91,15 @@ public function index(Request $request)
 
     public function show(PassSlip $passSlip)
     {
-        $passSlip->load(['employee', 'encodedBy', 'division', 'approvedBy', 'verifiedOutBy', 'verifiedInBy']);
+        abort_unless(SlipVisibility::allows(Auth::user(), $passSlip, 'pass'), 404);
+        $passSlip->load(['employee', 'encodedBy', 'division', 'approvedBy', 'rejectedBy', 'verifiedOutBy', 'verifiedInBy']);
         return view('pass-slips.show', compact('passSlip'));
     }
 
     public function approve(PassSlip $passSlip)
     {
         abort_unless(Auth::user()->canApproveSlipInDivision($passSlip->division), 403, 'Only the General Manager, division manager, or a super admin can approve pass slips.');
-        abort_unless($passSlip->status === 'pending', 409, 'Only pending pass slips can be approved.');
-
-        $passSlip->update([
+        SlipTransition::update($passSlip, 'pending', [
             'status'             => 'approved',
             'approved_by_user_id'=> Auth::id(),
             'approved_at'        => now(),
@@ -110,13 +111,13 @@ public function index(Request $request)
     public function reject(Request $request, PassSlip $passSlip)
     {
         abort_unless(Auth::user()->canApproveSlipInDivision($passSlip->division), 403, 'Only the General Manager, division manager, or a super admin can reject pass slips.');
-        abort_unless($passSlip->status === 'pending', 409, 'Only pending pass slips can be rejected.');
-
         $request->validate(['remarks' => 'nullable|string|max:2000']);
 
-        $passSlip->update([
-            'status'  => 'rejected',
-            'remarks' => $request->remarks,
+        SlipTransition::update($passSlip, 'pending', [
+            'status'              => 'rejected',
+            'remarks'             => $request->remarks,
+            'rejected_by_user_id' => Auth::id(),
+            'rejected_at'         => now(),
         ]);
 
         return back()->with('success', 'Pass Slip rejected.');
@@ -124,9 +125,7 @@ public function index(Request $request)
 
     public function timeOut(PassSlip $passSlip)
     {
-        abort_unless($passSlip->status === 'approved', 409, 'Only approved pass slips can be checked out.');
-
-        $passSlip->update([
+        SlipTransition::update($passSlip, 'approved', [
             'status'          => 'out',
             'time_out'        => now(),
             'verified_out_by' => Auth::id(),
@@ -137,9 +136,7 @@ public function index(Request $request)
 
     public function timeIn(PassSlip $passSlip)
     {
-        abort_unless($passSlip->status === 'out', 409, 'Only checked out pass slips can be checked in.');
-
-        $passSlip->update([
+        SlipTransition::update($passSlip, 'out', [
             'status'         => 'returned',
             'actual_return'  => now(),
             'verified_in_by' => Auth::id(),
@@ -150,7 +147,8 @@ public function index(Request $request)
 
 public function print(PassSlip $passSlip)
 {
-    $passSlip->load(['employee', 'encodedBy', 'division', 'approvedBy', 'verifiedOutBy', 'verifiedInBy']);
+    abort_unless(SlipVisibility::allows(Auth::user(), $passSlip, 'pass'), 404);
+    $passSlip->load(['employee', 'encodedBy', 'division', 'approvedBy', 'rejectedBy', 'verifiedOutBy', 'verifiedInBy']);
     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pass-slips.print', compact('passSlip'));
     $pdf->setPaper('a4', 'landscape'); // wide short page for 3 copies
     return $pdf->stream('pass-slip-' . $passSlip->slip_number . '.pdf');
@@ -158,15 +156,17 @@ public function print(PassSlip $passSlip)
 
 public function batchPrint(Request $request)
 {
-    $ids = $request->input('ids', []);
+    $ids = $request->validate(['ids' => 'required|array', 'ids.*' => 'integer|min:1'])['ids'];
 
     if (empty($ids)) {
         return back()->with('error', 'No pass slips selected.');
     }
 
-    $passSlips = PassSlip::with(['employee', 'encodedBy', 'division', 'approvedBy'])
+    $ids = array_values(array_unique($ids));
+    $passSlips = SlipVisibility::query(PassSlip::with(['employee', 'encodedBy', 'division', 'approvedBy']), Auth::user(), 'pass')
         ->whereIn('id', $ids)
         ->get();
+    abort_unless($passSlips->count() === count($ids), 404);
 
     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
         'pass-slips.batch-print',

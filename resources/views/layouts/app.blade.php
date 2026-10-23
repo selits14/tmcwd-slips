@@ -29,9 +29,9 @@
             {{-- Navigation --}}
             <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
                 @php
-                    $pendingPassCount  = \App\Models\PassSlip::where('status','pending')->count();
-                    $pendingGateCount  = \App\Models\GatePass::where('status','pending')->count();
-                    $pendingGasCount   = \App\Models\GasSlip::where('status','pending')->count();
+                    $pendingPassCount  = \App\Support\SlipVisibility::query(\App\Models\PassSlip::query(), auth()->user(), 'pass')->where('status','pending')->count();
+                    $pendingGateCount  = \App\Support\SlipVisibility::query(\App\Models\GatePass::query(), auth()->user(), 'gate')->where('status','pending')->count();
+                    $pendingGasCount   = \App\Support\SlipVisibility::query(\App\Models\GasSlip::query(), auth()->user(), 'gas')->where('status','pending')->count();
                     $totalPending      = $pendingPassCount + $pendingGateCount + $pendingGasCount;
                 @endphp
 
@@ -87,7 +87,7 @@
                 @endrole
 
                 {{-- Gas Slip --}}
-                @role('super_admin|approver|encoder|driver|guard|viewer')
+                @role('super_admin|approver|encoder|driver|viewer')
                 <a href="{{ route('gas-slips.index') }}"
    class="flex items-center justify-between px-3 py-2 rounded-lg text-sm
           {{ request()->routeIs('gas-slips.*') ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-800' }}">

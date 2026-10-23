@@ -70,6 +70,13 @@
                 <p class="text-xs text-gray-400">{{ $gasSlip->approved_at?->format('M d, Y h:i A') }}</p>
             </div>
             @endif
+            @if($gasSlip->rejectedBy)
+            <div class="mt-4 pt-4 border-t">
+                <p class="text-xs text-gray-500">Rejected by</p>
+                <p class="text-sm font-semibold">{{ $gasSlip->rejectedBy->name }}</p>
+                <p class="text-xs text-gray-400">{{ $gasSlip->rejected_at?->format('M d, Y h:i A') }}</p>
+            </div>
+            @endif
         </div>
 
         {{-- Section B --}}
@@ -78,7 +85,7 @@
                 Section B — Driver's Record (After Trip)
             </p>
 
-            @if($gasSlip->status === 'approved')
+            @if($gasSlip->status === 'approved' && (auth()->user()->hasRole('super_admin') || $gasSlip->driver_user_id === auth()->id()))
                 @role('super_admin|driver')
                 {{-- Driver fills this form --}}
                 <form method="POST" action="{{ route('gas-slips.complete', $gasSlip) }}">

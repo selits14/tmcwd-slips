@@ -12,7 +12,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Hasroles;
+    use HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -28,6 +28,11 @@ protected $fillable = [
 public function division()
 {
     return $this->belongsTo(Division::class);
+}
+
+public function divisionsHeaded()
+{
+    return $this->hasMany(Division::class, 'head_user_id');
 }
 
 public function gasSlips()

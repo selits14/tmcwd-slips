@@ -10,6 +10,8 @@ use App\Models\Division;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use App\Support\SlipVisibility;
 
 class ReportController extends Controller
 {
@@ -21,7 +23,7 @@ class ReportController extends Controller
     // Pass Slip Report
     public function passSlips(Request $request)
     {
-        $query = PassSlip::with(['employee', 'division', 'approvedBy'])
+        $query = SlipVisibility::query(PassSlip::with(['employee', 'division', 'approvedBy']), Auth::user(), 'pass')
             ->latest();
 
         if ($request->filled('date_from')) {
@@ -46,7 +48,7 @@ class ReportController extends Controller
     // Vehicle Pass Report
     public function gatePasses(Request $request)
     {
-        $query = GatePass::with(['requestedBy', 'division', 'approvedBy'])
+        $query = SlipVisibility::query(GatePass::with(['requestedBy', 'division', 'approvedBy']), Auth::user(), 'gate')
             ->latest();
 
         if ($request->filled('date_from')) {
@@ -75,7 +77,7 @@ class ReportController extends Controller
 
         [$year, $mon] = explode('-', $month);
 
-        $query = GasSlip::with(['vehicle', 'driver'])
+        $query = SlipVisibility::query(GasSlip::with(['vehicle', 'driver']), Auth::user(), 'gas')
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $mon)
             ->where('status', 'released');
@@ -109,7 +111,7 @@ class ReportController extends Controller
         $month = $request->get('month', now()->format('Y-m'));
         [$year, $mon] = explode('-', $month);
 
-        $gasSlips = GasSlip::with(['vehicle', 'driver'])
+        $gasSlips = SlipVisibility::query(GasSlip::with(['vehicle', 'driver']), Auth::user(), 'gas')
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $mon)
             ->where('status', 'released')
@@ -142,7 +144,7 @@ public function vehicleMrot(Request $request)
 
     [$year, $mon] = explode('-', $month);
 
-    $query = GasSlip::with(['vehicle', 'driver'])
+    $query = SlipVisibility::query(GasSlip::with(['vehicle', 'driver']), Auth::user(), 'gas')
         ->whereYear('created_at', $year)
         ->whereMonth('created_at', $mon)
         ->where('status', 'released')
@@ -166,7 +168,7 @@ public function vehicleMrotPrint(Request $request)
 
     [$year, $mon] = explode('-', $month);
 
-    $query = GasSlip::with(['vehicle', 'driver'])
+    $query = SlipVisibility::query(GasSlip::with(['vehicle', 'driver']), Auth::user(), 'gas')
         ->whereYear('created_at', $year)
         ->whereMonth('created_at', $mon)
         ->where('status', 'released')
@@ -195,7 +197,7 @@ public function vehicleRfc(Request $request)
 
     [$year, $mon] = explode('-', $month);
 
-    $gasSlips = GasSlip::with(['vehicle', 'driver'])
+    $gasSlips = SlipVisibility::query(GasSlip::with(['vehicle', 'driver']), Auth::user(), 'gas')
         ->whereYear('created_at', $year)
         ->whereMonth('created_at', $mon)
         ->where('status', 'released')
@@ -236,7 +238,7 @@ public function vehicleRfcPrint(Request $request)
     $month = $request->get('month', now()->format('Y-m'));
     [$year, $mon] = explode('-', $month);
 
-    $gasSlips = GasSlip::with(['vehicle', 'driver'])
+    $gasSlips = SlipVisibility::query(GasSlip::with(['vehicle', 'driver']), Auth::user(), 'gas')
         ->whereYear('created_at', $year)
         ->whereMonth('created_at', $mon)
         ->where('status', 'released')

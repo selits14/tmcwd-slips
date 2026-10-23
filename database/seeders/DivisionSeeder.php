@@ -19,7 +19,7 @@ class DivisionSeeder extends Seeder
         ];
 
         foreach ($divisions as $division) {
-            Division::create($division);
+            Division::updateOrCreate(['code' => $division['code']], $division);
         }
     }
 }

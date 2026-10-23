@@ -13,12 +13,14 @@ class GatePass extends Model
         'destination', 'passengers', 'purpose',
         'time_of_departure', 'time_of_arrival',
         'status', 'approved_by_user_id', 'approved_at',
+        'rejected_by_user_id', 'rejected_at',
         'released_by_user_id', 'released_at',
         'returned_at', 'returned_verified_by', 'remarks'
     ];
 
     protected $casts = [
         'approved_at'       => 'datetime',
+        'rejected_at'       => 'datetime',
         'released_at'       => 'datetime',
         'returned_at'       => 'datetime',
         'time_of_departure' => 'datetime',
@@ -43,6 +45,11 @@ class GatePass extends Model
     public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by_user_id');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by_user_id');
     }
 
     public function releasedBy()

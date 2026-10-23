@@ -16,12 +16,14 @@ class GasSlip extends Model
         'issued_from_stock', 'purchased_during_trip',
         'fuel_used', 'balance_in_tank_end',
         'status', 'approved_by_user_id', 'approved_at',
+        'rejected_by_user_id', 'rejected_at',
         'released_by_user_id', 'released_at', 'remarks',
         'fuel_type', 'gas_station', 'last_refuel_date', 'requested_liters','oil_used', 'odometer_end',
     ];
 
     protected $casts = [
         'approved_at'               => 'datetime',
+        'rejected_at'               => 'datetime',
         'released_at'               => 'datetime',
         'time_departure_office'     => 'datetime',
         'time_arrival_destination'  => 'datetime',
@@ -65,6 +67,11 @@ class GasSlip extends Model
     public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by_user_id');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by_user_id');
     }
 
     public function releasedBy()

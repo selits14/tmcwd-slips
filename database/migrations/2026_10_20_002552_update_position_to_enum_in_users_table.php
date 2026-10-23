@@ -20,20 +20,23 @@ return new class extends Migration
             'Other'
         )");
 
-        // Change to enum
-        DB::statement("ALTER TABLE users MODIFY position ENUM(
-            'General Manager',
-            'Division Manager',
-            'Admin Services Aide',
-            'Driver',
-            'Security Guard',
-            'IT Officer',
-            'Other'
-        ) NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE users MODIFY position ENUM(
+                'General Manager',
+                'Division Manager',
+                'Admin Services Aide',
+                'Driver',
+                'Security Guard',
+                'IT Officer',
+                'Other'
+            ) NULL");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE users MODIFY position VARCHAR(255) NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE users MODIFY position VARCHAR(255) NULL");
+        }
     }
 };

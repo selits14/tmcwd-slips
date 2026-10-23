@@ -53,11 +53,11 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:super_admin|encoder');
     Route::resource('gas-slips', GasSlipController::class)
         ->only(['index', 'show'])
-        ->middleware('role:super_admin|approver|encoder|driver|guard|viewer');
+        ->middleware('role:super_admin|approver|encoder|driver|viewer');
     Route::post('gas-slips/{gasSlip}/approve',  [GasSlipController::class, 'approve'])->name('gas-slips.approve');
     Route::post('gas-slips/{gasSlip}/reject',   [GasSlipController::class, 'reject'])->name('gas-slips.reject');
     Route::post('gas-slips/{gasSlip}/complete', [GasSlipController::class, 'complete'])->middleware('role:super_admin|driver')->name('gas-slips.complete');
-    Route::get('gas-slips/{gasSlip}/print',     [GasSlipController::class, 'print'])->middleware('role:super_admin|approver|encoder|driver|guard|viewer')->name('gas-slips.print');
+    Route::get('gas-slips/{gasSlip}/print',     [GasSlipController::class, 'print'])->middleware('role:super_admin|approver|encoder|driver|viewer')->name('gas-slips.print');
 
     // Reports
 Route::prefix('reports')->name('reports.')->middleware('role:super_admin|approver|encoder|viewer')->group(function () {
@@ -77,7 +77,7 @@ Route::prefix('reports')->name('reports.')->middleware('role:super_admin|approve
         // Batch print routes
     Route::post('pass-slips/batch-print',  [PassSlipController::class, 'batchPrint'])->middleware('role:super_admin|approver|encoder|driver|guard|viewer')->name('pass-slips.batch-print');
     Route::post('gate-passes/batch-print', [GatePassController::class, 'batchPrint'])->middleware('role:super_admin|approver|encoder|driver|guard|viewer')->name('gate-passes.batch-print');
-    Route::post('gas-slips/batch-print',   [GasSlipController::class, 'batchPrint'])->middleware('role:super_admin|approver|encoder|driver|guard|viewer')->name('gas-slips.batch-print');
+    Route::post('gas-slips/batch-print',   [GasSlipController::class, 'batchPrint'])->middleware('role:super_admin|approver|encoder|driver|viewer')->name('gas-slips.batch-print');
     // Admin
    Route::prefix('admin')->name('admin.')->middleware('role:super_admin')->group(function () {
     Route::resource('users',     \App\Http\Controllers\Admin\UserController::class)->except(['show']);
