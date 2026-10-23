@@ -17,18 +17,13 @@ class SlipVisibility
             return $query;
         }
 
-        if (! $user->hasRole('driver') && ! self::managesDivision($user)) {
-            return $query->whereRaw('1 = 0');
-        }
-
         return $query->where(function (Builder $visible) use ($user, $type) {
-            if ($user->hasRole('driver')) {
-                match ($type) {
-                    'pass' => $visible->orWhere('employee_user_id', $user->id),
-                    'gas' => $visible->orWhere('driver_user_id', $user->id),
-                    'gate' => $visible->orWhere('driver_name', $user->name),
-                };
-            }
+            match ($type) {
+                'pass' => $visible->where('employee_user_id', $user->id),
+                'gas' => $visible->where('driver_user_id', $user->id),
+                'gate' => $visible->where('requested_by_user_id', $user->id)
+                    ->when($user->hasRole('driver'), fn (Builder $query) => $query->orWhere('driver_name', $user->name)),
+            };
 
             if (self::managesDivision($user)) {
                 $visible->orWhere('division_id', $user->division_id)
@@ -48,9 +43,10 @@ class SlipVisibility
         }
 
         $owned = match ($type) {
-            'pass' => $user->hasRole('driver') && $slip->employee_user_id === $user->id,
-            'gas' => $user->hasRole('driver') && $slip->driver_user_id === $user->id,
-            'gate' => $user->hasRole('driver') && $slip->driver_name === $user->name,
+            'pass' => $slip->employee_user_id === $user->id,
+            'gas' => $slip->driver_user_id === $user->id,
+            'gate' => $slip->requested_by_user_id === $user->id
+                || ($user->hasRole('driver') && $slip->driver_name === $user->name),
         };
 
         return $owned || (self::managesDivision($user) && $user->canApproveSlipInDivision($slip->division));

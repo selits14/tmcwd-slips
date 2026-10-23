@@ -7,6 +7,7 @@ use App\Models\Vehicle;
 use App\Models\User;
 use App\Support\SlipNumber;
 use App\Support\SlipVisibility;
+use App\Support\SlipNotifier;
 use App\Support\SlipTransition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -89,10 +90,10 @@ public function index(Request $request)
             ]);
         }
 
-        DB::transaction(function () use ($request, $driver) {
+        $gasSlip = DB::transaction(function () use ($request, $driver) {
             $displayPrefix = 'GS-' . now()->year . '-';
 
-            GasSlip::create([
+            return GasSlip::create([
                 'slip_number'          => SlipNumber::next('GS-', 4, $displayPrefix),
                 'vehicle_id'           => $request->vehicle_id,
                 'driver_user_id'       => $request->driver_user_id,
@@ -113,6 +114,8 @@ public function index(Request $request)
             ]);
         });
 
+        SlipNotifier::submitted($gasSlip, 'Gas Slip', 'gas-slips.show');
+
         return redirect()->route('gas-slips.index')
             ->with('success', 'Gas Slip submitted successfully!');
     }
@@ -132,6 +135,7 @@ public function index(Request $request)
             'approved_by_user_id' => Auth::id(),
             'approved_at'         => now(),
         ]);
+        SlipNotifier::decided($gasSlip, 'Gas Slip', 'gas-slips.show', 'approved', Auth::id());
 
         return back()->with('success', 'Gas Slip approved!');
     }
@@ -147,6 +151,7 @@ public function index(Request $request)
             'rejected_by_user_id' => Auth::id(),
             'rejected_at'         => now(),
         ]);
+        SlipNotifier::decided($gasSlip, 'Gas Slip', 'gas-slips.show', 'rejected', Auth::id());
 
         return back()->with('success', 'Gas Slip rejected.');
     }

@@ -8,6 +8,7 @@ use App\Models\Vehicle;
 use App\Models\User;
 use App\Support\SlipNumber;
 use App\Support\SlipVisibility;
+use App\Support\SlipNotifier;
 use App\Support\SlipTransition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -70,10 +71,10 @@ public function index(Request $request)
 
         $requester = User::findOrFail($request->requested_by_user_id);
 
-        DB::transaction(function () use ($request, $requester) {
+        $gatePass = DB::transaction(function () use ($request, $requester) {
             $displayPrefix = 'GP-' . now()->year . '-';
 
-            GatePass::create([
+            return GatePass::create([
                 'pass_number'          => SlipNumber::next('GP-', 5, $displayPrefix),
                 'requested_by_user_id' => $requester->id,
                 'encoded_by_user_id'   => Auth::id(),
@@ -92,6 +93,8 @@ public function index(Request $request)
                 'remarks'              => $request->remarks,
             ]);
         });
+
+        SlipNotifier::submitted($gatePass, 'Vehicle Pass', 'gate-passes.show');
 
         return redirect()->route('gate-passes.index')
             ->with('success', 'Vehicle Pass submitted successfully!');
@@ -112,6 +115,7 @@ public function index(Request $request)
             'approved_by_user_id' => Auth::id(),
             'approved_at'         => now(),
         ]);
+        SlipNotifier::decided($gatePass, 'Vehicle Pass', 'gate-passes.show', 'approved', Auth::id());
 
         return back()->with('success', 'Vehicle Pass approved!');
     }
@@ -127,6 +131,7 @@ public function index(Request $request)
             'rejected_by_user_id' => Auth::id(),
             'rejected_at'         => now(),
         ]);
+        SlipNotifier::decided($gatePass, 'Vehicle Pass', 'gate-passes.show', 'rejected', Auth::id());
 
         return back()->with('success', 'Vehicle Pass rejected.');
     }

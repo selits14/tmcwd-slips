@@ -7,6 +7,7 @@ use App\Models\Division;
 use App\Models\User;
 use App\Support\SlipNumber;
 use App\Support\SlipVisibility;
+use App\Support\SlipNotifier;
 use App\Support\SlipTransition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -67,10 +68,10 @@ public function index(Request $request)
 
         $employee = User::findOrFail($request->employee_user_id);
 
-        DB::transaction(function () use ($request, $employee) {
+        $passSlip = DB::transaction(function () use ($request, $employee) {
             $displayPrefix = 'PS-' . now()->year . '-';
 
-            PassSlip::create([
+            return PassSlip::create([
                 'slip_number'      => SlipNumber::next('PS-', 5, $displayPrefix),
                 'employee_user_id' => $employee->id,
                 'encoded_by_user_id' => Auth::id(),
@@ -84,6 +85,8 @@ public function index(Request $request)
                 'remarks'          => $request->remarks,
             ]);
         });
+
+        SlipNotifier::submitted($passSlip, 'Pass Slip', 'pass-slips.show');
 
         return redirect()->route('pass-slips.index')
             ->with('success', 'Pass Slip submitted successfully!');
@@ -104,6 +107,7 @@ public function index(Request $request)
             'approved_by_user_id'=> Auth::id(),
             'approved_at'        => now(),
         ]);
+        SlipNotifier::decided($passSlip, 'Pass Slip', 'pass-slips.show', 'approved', Auth::id());
 
         return back()->with('success', 'Pass Slip approved!');
     }
@@ -119,6 +123,7 @@ public function index(Request $request)
             'rejected_by_user_id' => Auth::id(),
             'rejected_at'         => now(),
         ]);
+        SlipNotifier::decided($passSlip, 'Pass Slip', 'pass-slips.show', 'rejected', Auth::id());
 
         return back()->with('success', 'Pass Slip rejected.');
     }

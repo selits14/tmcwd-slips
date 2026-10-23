@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GasSlipController;
 use App\Http\Controllers\GatePassController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PassSlipController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
@@ -20,6 +21,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
     // All staff can view slips; only encoders create them.
     Route::resource('pass-slips', PassSlipController::class)

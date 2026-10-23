@@ -177,14 +177,58 @@
         </aside>
 
         {{-- MAIN CONTENT --}}
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="min-h-0 min-w-0 flex-1 flex flex-col">
 
             {{-- Top Bar --}}
-            <header class="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
+            <header class="relative z-20 bg-white shadow-sm px-6 py-4 flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-gray-700">
                     {{ $title ?? 'Dashboard' }}
                 </h2>
-                <span class="text-sm text-gray-500">{{ now()->format('F d, Y') }}</span>
+                @php
+                    $notifications = auth()->user()->notifications()->latest()->limit(8)->get();
+                    $unreadNotificationCount = auth()->user()->unreadNotifications()->count();
+                @endphp
+                <div class="flex items-center gap-5">
+                    <details class="relative">
+                        <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100" aria-label="Notifications">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3A6 6 0 006 11v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9"/>
+                            </svg>
+                            Notifications
+                            @if($unreadNotificationCount)
+                                <span class="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">{{ $unreadNotificationCount }}</span>
+                            @endif
+                        </summary>
+                        <div class="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+                            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                                <p class="text-sm font-semibold text-gray-800">Recent notifications</p>
+                                @if($unreadNotificationCount)
+                                    <form method="POST" action="{{ route('notifications.read-all') }}">
+                                        @csrf
+                                        <button class="text-xs font-medium text-sky-700 hover:underline">Mark all read</button>
+                                    </form>
+                                @endif
+                            </div>
+                            <div class="max-h-96 overflow-y-auto">
+                                @forelse($notifications as $notification)
+                                    <a href="{{ route('notifications.open', $notification->id) }}" class="block border-b border-gray-100 px-4 py-3 hover:bg-sky-50 {{ $notification->read_at ? 'bg-white' : 'bg-sky-50/60' }}">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <p class="text-sm font-semibold text-gray-800">{{ $notification->data['title'] ?? 'Notification' }}</p>
+                                            @unless($notification->read_at)
+                                                <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-600" aria-label="Unread"></span>
+                                            @endunless
+                                        </div>
+                                        <p class="mt-1 text-xs leading-5 text-gray-600">{{ $notification->data['message'] ?? '' }}</p>
+                                        <p class="mt-1 text-xs text-gray-400">{{ $notification->created_at->diffForHumans() }}</p>
+                                    </a>
+                                @empty
+                                    <p class="px-4 py-6 text-center text-sm text-gray-500">No notifications yet.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </details>
+                    <span class="text-sm text-gray-500">{{ now()->format('F d, Y') }}</span>
+                </div>
             </header>
 
             {{-- Flash Messages --}}
