@@ -291,17 +291,18 @@
                 <h4 class="font-semibold text-slate-700 text-sm">Monthly Fuel Allocation</h4>
                 <p class="text-xs text-gray-400 mt-1">{{ now()->format('F Y') }} · usage from completed trips</p>
             </div>
-            <label class="sr-only" for="fuel-filter">Filter vehicles by fuel use</label>
-            <select id="fuel-filter" class="rounded-lg border-gray-300 text-xs" onchange="document.querySelectorAll('[data-fuel-status]').forEach(row => row.hidden = this.value !== 'all' && row.dataset.fuelStatus !== this.value)">
+            <label class="sr-only" for="fuel-vehicle-filter">Filter by vehicle</label>
+            <select id="fuel-vehicle-filter" class="rounded-lg border-gray-300 text-xs">
                 <option value="all">All vehicles</option>
-                <option value="limited">At/over allocation</option>
-                <option value="within">Within allocation</option>
+                @foreach($limitedFuelVehicles as $vehicle)
+                    <option value="{{ $vehicle->id }}">{{ $vehicle->plate_number }}</option>
+                @endforeach
             </select>
         </div>
         <div id="fuel-vehicles" class="divide-y divide-gray-50 max-h-52 overflow-y-auto">
             @forelse($limitedFuelVehicles as $vehicle)
                 @php $fuelLimited = (float) $vehicle->monthly_fuel_used >= (float) $vehicle->monthly_fuel_allocation; @endphp
-                <div data-fuel-status="{{ $fuelLimited ? 'limited' : 'within' }}" class="px-5 py-3 flex items-center justify-between gap-4">
+                <div data-fuel-vehicle="{{ $vehicle->id }}" class="px-5 py-3 flex items-center justify-between gap-4">
                     <div>
                         <p class="text-xs font-semibold text-gray-700">{{ $vehicle->plate_number }} · {{ $vehicle->description }}</p>
                         <p class="text-xs text-gray-400">{{ number_format((float) $vehicle->monthly_fuel_used, 2) }} / {{ number_format((float) $vehicle->monthly_fuel_allocation, 2) }} L used</p>
@@ -311,13 +312,13 @@
             @empty
                 <p class="px-5 py-8 text-center text-sm text-gray-400">No monthly fuel allocations set.</p>
             @endforelse
-            <p id="fuel-filter-empty" hidden class="px-5 py-8 text-center text-sm text-gray-400">No vehicles match this filter.</p>
+            <p id="fuel-filter-empty" hidden class="px-5 py-8 text-center text-sm text-gray-400">No vehicle matches this filter.</p>
         </div>
     </div>
     <script>
-        document.getElementById('fuel-filter').addEventListener('change', function () {
-            const rows = [...document.querySelectorAll('[data-fuel-status]')];
-            rows.forEach(row => row.hidden = this.value !== 'all' && row.dataset.fuelStatus !== this.value);
+        document.getElementById('fuel-vehicle-filter').addEventListener('change', function () {
+            const rows = [...document.querySelectorAll('[data-fuel-vehicle]')];
+            rows.forEach(row => row.hidden = this.value !== 'all' && row.dataset.fuelVehicle !== this.value);
             document.getElementById('fuel-filter-empty').hidden = !rows.length || rows.some(row => !row.hidden);
         });
     </script>
