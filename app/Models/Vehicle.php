@@ -14,11 +14,13 @@ class Vehicle extends Model
         'is_active',
         'num_cylinders',
         'normal_km_per_liter',
+        'monthly_fuel_allocation',
     ];
 
     protected $casts = [
         'is_active'           => 'boolean',
         'normal_km_per_liter' => 'decimal:2',
+        'monthly_fuel_allocation' => 'decimal:2',
     ];
 
     public function division()

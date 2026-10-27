@@ -70,6 +70,12 @@
                     </select>
                 </div>
 
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Fuel Allocation (liters)</label>
+                    <input type="number" name="monthly_fuel_allocation" value="{{ old('monthly_fuel_allocation') }}" min="0" max="999999.99" step="0.01" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    @error('monthly_fuel_allocation')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+
                 {{-- Cylinders & Normal km/L --}}
 <div class="grid grid-cols-2 gap-4 mb-4">
     <div>

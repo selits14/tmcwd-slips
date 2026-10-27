@@ -7,6 +7,8 @@ use App\Models\GatePass;
 use App\Models\PassSlip;
 use App\Models\User;
 use App\Models\Division;
+use App\Models\Vehicle;
+use Illuminate\Support\Carbon;
 use App\Support\SlipVisibility;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,6 +17,18 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $limitedFuelVehicles = collect();
+        if ($user->hasRole('super_admin')) {
+            $month = Carbon::now();
+            $limitedFuelVehicles = Vehicle::where('is_active', true)
+                ->whereNotNull('monthly_fuel_allocation')
+                ->withSum(['gasSlips as monthly_fuel_used' => fn ($query) => $query
+                    ->where('status', 'released')
+                    ->whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month)], 'fuel_used')
+                ->get()
+                ->each(fn ($vehicle) => $vehicle->monthly_fuel_used = $vehicle->monthly_fuel_used ?? 0);
+        }
 
         // Pending counts
         $stats = [
@@ -91,7 +105,8 @@ class DashboardController extends Controller
             'recentActivity',
             'pendingPassSlips',
             'pendingGatePasses',
-            'pendingGasSlips'
+            'pendingGasSlips',
+            'limitedFuelVehicles'
         ));
     }
 }

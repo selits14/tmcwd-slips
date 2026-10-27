@@ -241,6 +241,7 @@
 
     </div>
 
+    <div class="grid grid-cols-1 {{ Auth::user()->hasRole('super_admin') ? 'lg:grid-cols-2' : '' }} gap-6">
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
         <h4 class="font-semibold text-slate-700 text-sm mb-4">Quick Actions</h4>
         <div class="flex flex-wrap gap-3">
@@ -282,6 +283,45 @@
             </a>
             @endrole
         </div>
+    </div>
+    @role('super_admin')
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-5 py-4 border-b flex items-center justify-between gap-4">
+            <div>
+                <h4 class="font-semibold text-slate-700 text-sm">Monthly Fuel Allocation</h4>
+                <p class="text-xs text-gray-400 mt-1">{{ now()->format('F Y') }} · usage from completed trips</p>
+            </div>
+            <label class="sr-only" for="fuel-filter">Filter vehicles by fuel use</label>
+            <select id="fuel-filter" class="rounded-lg border-gray-300 text-xs" onchange="document.querySelectorAll('[data-fuel-status]').forEach(row => row.hidden = this.value !== 'all' && row.dataset.fuelStatus !== this.value)">
+                <option value="all">All vehicles</option>
+                <option value="limited">At/over allocation</option>
+                <option value="within">Within allocation</option>
+            </select>
+        </div>
+        <div id="fuel-vehicles" class="divide-y divide-gray-50 max-h-52 overflow-y-auto">
+            @forelse($limitedFuelVehicles as $vehicle)
+                @php $fuelLimited = (float) $vehicle->monthly_fuel_used >= (float) $vehicle->monthly_fuel_allocation; @endphp
+                <div data-fuel-status="{{ $fuelLimited ? 'limited' : 'within' }}" class="px-5 py-3 flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-700">{{ $vehicle->plate_number }} · {{ $vehicle->description }}</p>
+                        <p class="text-xs text-gray-400">{{ number_format((float) $vehicle->monthly_fuel_used, 2) }} / {{ number_format((float) $vehicle->monthly_fuel_allocation, 2) }} L used</p>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded-full {{ $fuelLimited ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' }}">{{ $fuelLimited ? 'At/over limit' : 'Within limit' }}</span>
+                </div>
+            @empty
+                <p class="px-5 py-8 text-center text-sm text-gray-400">No monthly fuel allocations set.</p>
+            @endforelse
+            <p id="fuel-filter-empty" hidden class="px-5 py-8 text-center text-sm text-gray-400">No vehicles match this filter.</p>
+        </div>
+    </div>
+    <script>
+        document.getElementById('fuel-filter').addEventListener('change', function () {
+            const rows = [...document.querySelectorAll('[data-fuel-status]')];
+            rows.forEach(row => row.hidden = this.value !== 'all' && row.dataset.fuelStatus !== this.value);
+            document.getElementById('fuel-filter-empty').hidden = !rows.length || rows.some(row => !row.hidden);
+        });
+    </script>
+    @endrole
     </div>
 
 </x-app-layout>

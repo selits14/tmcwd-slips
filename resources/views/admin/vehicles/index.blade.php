@@ -17,6 +17,7 @@
                     <th class="px-6 py-3">Description</th>
                     <th class="px-6 py-3">Type</th>
                     <th class="px-6 py-3">Division</th>
+                    <th class="px-6 py-3">Monthly Fuel (L)</th>
                     <th class="px-6 py-3">Status</th>
                     <th class="px-6 py-3">Action</th>
                 </tr>
@@ -28,6 +29,7 @@
                     <td class="px-6 py-4">{{ $vehicle->description }}</td>
                     <td class="px-6 py-4">{{ $vehicle->type }}</td>
                     <td class="px-6 py-4">{{ $vehicle->division->name ?? '-' }}</td>
+                    <td class="px-6 py-4">{{ $vehicle->monthly_fuel_allocation === null ? '-' : number_format((float) $vehicle->monthly_fuel_allocation, 2) }}</td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 rounded-full text-xs
                             {{ $vehicle->is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
@@ -47,7 +49,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="px-6 py-10 text-center text-gray-400">
+                    <td colspan="7" class="px-6 py-10 text-center text-gray-400">
                         No vehicles found.
                     </td>
                 </tr>

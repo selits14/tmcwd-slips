@@ -27,6 +27,7 @@ class VehicleController extends Controller
             'plate_number' => 'required|string|unique:vehicles,plate_number',
             'description'  => 'required|string|max:255',
             'type'         => 'required|string|max:100',
+            'monthly_fuel_allocation' => 'nullable|numeric|min:0|max:999999.99|decimal:0,2',
         ]);
 
         Vehicle::create([
@@ -36,6 +37,7 @@ class VehicleController extends Controller
     'assigned_division_id' => $request->assigned_division_id,
     'num_cylinders'        => $request->num_cylinders,        // ← add
     'normal_km_per_liter'  => $request->normal_km_per_liter,  // ← add
+    'monthly_fuel_allocation' => $request->monthly_fuel_allocation,
     'is_active'            => true,
 ]);
 
@@ -55,6 +57,7 @@ class VehicleController extends Controller
             'plate_number' => 'required|string|unique:vehicles,plate_number,' . $vehicle->id,
             'description'  => 'required|string|max:255',
             'type'         => 'required|string|max:100',
+            'monthly_fuel_allocation' => 'nullable|numeric|min:0|max:999999.99|decimal:0,2',
         ]);
 
         $vehicle->update([
@@ -64,6 +67,7 @@ class VehicleController extends Controller
     'assigned_division_id' => $request->assigned_division_id,
     'num_cylinders'        => $request->num_cylinders,        // ← add
     'normal_km_per_liter'  => $request->normal_km_per_liter,  // ← add
+    'monthly_fuel_allocation' => $request->monthly_fuel_allocation,
     'is_active'            => $request->has('is_active'),
 ]);
 
